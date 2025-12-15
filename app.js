@@ -5,7 +5,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 // =======================
 //  CONFIG
 // =======================
-const OPENAI_API_KEY = "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";
+// API key is now stored in localStorage for security (never commit keys to public repos!)
+let OPENAI_API_KEY = localStorage.getItem("openai_api_key") || "";
+
+function promptForApiKey() {
+  const key = prompt("Enter your OpenAI API Key:\n\n(This will be stored locally in your browser and never sent to GitHub)");
+  if (key && key.trim().startsWith("sk-")) {
+    OPENAI_API_KEY = key.trim();
+    localStorage.setItem("openai_api_key", OPENAI_API_KEY);
+    return true;
+  }
+  return false;
+}
 const AVATAR_BASE_PATH = "./avatar/avatar/models/";
 const AVATARS = [
   { id: "muhammad", label: "Muhammad", file: "muhammad.glb", gender: "male" },
@@ -483,8 +494,10 @@ function setStatus(text) {
 
 // --- OpenAI Chat API helper ---
 async function callOpenAI(systemPrompt, userMessage) {
-  if (!OPENAI_API_KEY || OPENAI_API_KEY === "YOUR_OPENAI_API_KEY_HERE") {
-    throw new Error("Set your OPENAI_API_KEY in app.js");
+  if (!OPENAI_API_KEY || !OPENAI_API_KEY.startsWith("sk-")) {
+    if (!promptForApiKey()) {
+      throw new Error("OpenAI API key is required. Please refresh and enter a valid key.");
+    }
   }
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
