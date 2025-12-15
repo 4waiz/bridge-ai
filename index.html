@@ -1,0 +1,504 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EDGE AI Guide Prototype</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg: radial-gradient(circle at 10% -10%, #0b1a36 0, #050a18 40%, #03060f 80%);
+      --panel: linear-gradient(145deg, rgba(12, 18, 34, 0.92), rgba(7, 11, 21, 0.9));
+      --panel-border: rgba(118, 141, 203, 0.25);
+      --panel-glow: 0 24px 60px rgba(9, 12, 24, 0.8);
+      --text: #e9eef7;
+      --muted: #a8b3c6;
+      --accent: #7dd3fc;
+      --accent-2: #a78bfa;
+      --btn-red: linear-gradient(135deg, #ef4444, #f97316);
+      --btn-green: linear-gradient(135deg, #22c55e, #84cc16);
+      --btn-blue: linear-gradient(135deg, #3b82f6, #6366f1);
+      --card-radius: 24px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -40%;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.08), transparent 35%),
+        radial-gradient(circle at 80% 10%, rgba(168, 85, 247, 0.07), transparent 35%),
+        radial-gradient(circle at 50% 80%, rgba(14, 165, 233, 0.08), transparent 35%);
+      opacity: 0.9;
+      filter: blur(42px);
+      animation: drift 48s linear infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    @keyframes drift {
+      from { transform: translate3d(0,0,0); }
+      to   { transform: translate3d(120px,120px,0); }
+    }
+
+    #root {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 1040px;
+      height: 100%;
+      max-height: 1366px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #avatar-container {
+      position: relative;
+      width: min(70vw, 620px);
+      aspect-ratio: 3 / 4;
+      margin-top: min(4vh, 32px);
+      border-radius: calc(var(--card-radius) + 4px);
+      overflow: hidden;
+      background: radial-gradient(circle at 35% 20%, #0f172a 0, #020617 70%);
+      box-shadow:
+        0 32px 80px rgba(6, 10, 22, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    #avatar-container canvas { display: block; }
+    #avatar-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 0.95rem;
+      background: radial-gradient(circle at top, rgba(15,23,42,0.9), rgba(0,0,0,0.96));
+    }
+
+    #hud {
+      width: 100%;
+      max-width: 780px;
+      margin-bottom: min(4vh, 32px);
+      padding: 18px 20px 16px;
+      border-radius: var(--card-radius);
+      background: var(--panel);
+      box-shadow:
+        var(--panel-glow),
+        0 0 0 1px var(--panel-border),
+        0 0 30px rgba(125, 211, 252, 0.08);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #avatar-picker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      align-self: flex-start;
+    }
+
+    #avatar-picker .label {
+      font-weight: 700;
+      color: #dbe5ff;
+      letter-spacing: 0.01em;
+      font-size: 0.94rem;
+    }
+
+    #avatar-select {
+      flex: 0 0 auto;
+      width: 230px;
+      border-radius: 12px;
+      border: 1px solid rgba(136, 189, 255, 0.35);
+      background: linear-gradient(145deg, #f7fbff, #e6eef7);
+      color: #0f172a;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow:
+        0 10px 20px rgba(12, 20, 38, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    #avatar-select option {
+      font-size: 0.95rem;
+      color: #0b1220;
+    }
+
+    #avatar-select:focus {
+      outline: 2px solid rgba(125, 211, 252, 0.6);
+      border-color: rgba(99, 102, 241, 0.7);
+      box-shadow:
+        0 12px 30px rgba(99, 102, 241, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    #output {
+      min-height: 72px;
+      max-height: 220px;
+      overflow-y: auto;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--text);
+      padding: 8px 6px 0;
+    }
+
+    #output strong { color: #7dd3fc; }
+
+    #status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    #status { letter-spacing: 0.01em; }
+
+    #stop-speech {
+      border: none;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: var(--btn-red);
+      color: #0b1220;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 12px 24px rgba(249, 115, 22, 0.45);
+    }
+
+    #stop-speech:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .buttons button {
+      flex: 1;
+      border: none;
+      border-radius: 999px;
+      padding: 13px 12px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      color: #f9fafb;
+      background-size: 200% 200%;
+      transition:
+        transform 0.09s ease,
+        box-shadow 0.13s ease,
+        background-position 0.4s ease,
+        opacity 0.1s;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.7);
+    }
+
+    .btn-speak { background-image: linear-gradient(135deg, #ef4444, #fb7185); }
+    .btn-paths { background-image: linear-gradient(135deg, #22c55e, #a3e635); }
+    .btn-qna   { background-image: linear-gradient(135deg, #3b82f6, #8b5cf6); }
+
+    .buttons button:hover:not(:disabled) {
+      transform: translateY(-1px) scale(1.01);
+      box-shadow:
+        0 14px 30px rgba(15, 23, 42, 0.9),
+        0 0 18px rgba(125, 211, 252, 0.55);
+      background-position: 100% 0;
+    }
+
+    .buttons button:active:not(:disabled) {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.8);
+    }
+
+    .buttons button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Input modal */
+    #input-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.78);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+
+    #input-modal.show { display: flex; }
+
+    .input-card {
+      width: min(600px, 94vw);
+      background: linear-gradient(155deg, rgba(11, 18, 34, 0.98), rgba(6, 10, 20, 0.96));
+      border-radius: 22px;
+      border: 1px solid rgba(125, 211, 252, 0.2);
+      box-shadow:
+        0 28px 80px rgba(3, 7, 18, 0.65),
+        0 0 0 1px rgba(59, 130, 246, 0.25),
+        0 0 45px rgba(99,102,241,0.16);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .input-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .input-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #e5e7eb;
+    }
+
+    .input-subtitle {
+      font-size: 0.92rem;
+      color: #cbd5e1;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    #input-close {
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(255, 255, 255, 0.04);
+      color: #e5e7eb;
+      border-radius: 999px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.1s ease;
+    }
+
+    #input-close:hover { background: rgba(255, 255, 255, 0.08); }
+
+    .input-switch {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .input-switch button {
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      color: #cbd5e1;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.12s ease;
+    }
+
+    .input-switch button.active {
+      background: linear-gradient(120deg, #38bdf8, #a78bfa);
+      color: #0b1220;
+      border-color: rgba(59,130,246,0.6);
+      box-shadow:
+        0 10px 30px rgba(59, 130, 246, 0.35),
+        inset 0 1px 0 rgba(255,255,255,0.35);
+    }
+
+    .input-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #input-textarea {
+      width: 100%;
+      min-height: 140px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      background: rgba(15, 23, 42, 0.82);
+      color: #e5e7eb;
+      padding: 12px;
+      font-size: 0.96rem;
+      line-height: 1.5;
+      resize: vertical;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    #input-textarea:focus {
+      outline: 2px solid rgba(59, 130, 246, 0.5);
+      border-color: rgba(59, 130, 246, 0.8);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px dashed rgba(148,163,184,0.45);
+      color: #cbd5e1;
+      font-size: 0.9rem;
+    }
+
+    .input-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #input-submit {
+      margin-left: auto;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 0.96rem;
+      font-weight: 800;
+      cursor: pointer;
+      color: #0b1220;
+      background: linear-gradient(135deg, #4ade80, #a3e635);
+      box-shadow: 0 12px 26px rgba(74, 222, 128, 0.4);
+      transition: transform 0.09s ease, box-shadow 0.12s ease;
+    }
+
+    #input-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 32px rgba(74, 222, 128, 0.5);
+    }
+
+    #input-submit:active { transform: translateY(1px); }
+
+    @media (max-width: 768px) {
+      #avatar-container {
+        width: 90vw;
+        margin-top: 12px;
+      }
+      #hud {
+        margin-bottom: 14px;
+        padding: 14px 14px 12px;
+      }
+      .buttons button {
+        font-size: 0.85rem;
+        padding: 10px 6px;
+      }
+      .input-card { padding: 14px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root">
+    <div id="app">
+      <div id="avatar-container">
+        <div id="avatar-loading">Loading EDGE Guide...</div>
+      </div>
+
+      <div id="hud">
+        <div id="avatar-picker">
+          <div class="label">Choose avatar</div>
+          <select id="avatar-select" aria-label="Choose avatar">
+            <option value="muhammad" selected>Muhammad</option>
+            <option value="anna">Anna</option>
+            <option value="aki">Aki</option>
+            <option value="amari">Amari</option>
+            <option value="leo">Leo</option>
+            <option value="maya">Maya</option>
+            <option value="rose">Rose</option>
+            <option value="shonith">Shonith</option>
+            <option value="tom">Tom</option>
+            <option value="wei">Wei</option>
+            <option value="zara">Zara</option>
+            <option value="zola">Zola</option>
+          </select>
+        </div>
+
+        <div id="output">
+          <strong>EDGE Guide:</strong> Salam! I'm your AI assistant. Tap a button to begin.
+        </div>
+        <div id="status-row">
+          <div id="status">Ready</div>
+          <button id="stop-speech" disabled>Stop voice</button>
+        </div>
+
+        <div class="buttons">
+          <button id="btn-speak" class="btn-speak">Speak</button>
+          <button id="btn-paths" class="btn-paths">Paths</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-modal" aria-hidden="true">
+    <div class="input-card" role="dialog" aria-modal="true">
+      <div class="input-header">
+        <div>
+          <div class="input-title" id="input-title">Talk to the guide</div>
+          <div class="input-subtitle" id="input-subtitle">Choose mic or text and share your question.</div>
+        </div>
+        <button id="input-close" aria-label="Close input panel">X</button>
+      </div>
+
+      <div class="input-switch">
+        <button data-mode="mic" class="active">Mic input</button>
+        <button data-mode="text">Text input</button>
+      </div>
+
+      <div class="input-body">
+        <textarea id="input-textarea" placeholder="Start talking or type your question..."></textarea>
+        <div class="pill" id="mic-status">Tap mic tab to start listening automatically.</div>
+      </div>
+
+      <div class="input-actions">
+        <div style="color:#94a3b8; font-size:0.85rem;">You can edit the transcript before sending.</div>
+        <button id="input-submit">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
